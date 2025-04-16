@@ -5,7 +5,7 @@ import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import Markdown from "react-markdown";
 
-import questionList from "../../lpi/lpi_questions_gemini.json";
+import questionList from "../../lpi/lpi_questions.json";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 

@@ -3,280 +3,454 @@ import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { Dialog } from "@headlessui/react";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import Markdown from "react-markdown";
+
+import questionList from "../../lpi/lpi_questions.json";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
+let testCompleteScreen = false;
+if (import.meta.env.DEV) {
+  // In development mode, set this to true to generate a completed test result.
+  testCompleteScreen = true;
+}
+
 const App = () => {
-    const [questions, setQuestions] = useState([]);
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [selectedAnswers, setSelectedAnswers] = useState([]);
-    const [showResult, setShowResult] = useState(false);
-    const [isCorrect, setIsCorrect] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [testComplete, setTestComplete] = useState(false);
-    const [correctAnswersCount, setCorrectAnswersCount] = useState(0);
-    const [wrongAnswers, setWrongAnswers] = useState([]);
+  const [questions, setQuestions] = useState([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState([]);
+  const [showResult, setShowResult] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [testComplete, setTestComplete] = useState(false);
+  const [correctAnswersCount, setCorrectAnswersCount] = useState(0);
+  const [wrongAnswers, setWrongAnswers] = useState([]);
 
-    // Helper to shuffle arrays
-    const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
+  // Helper to shuffle arrays
+  const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
-    useEffect(() => {
-        fetch("https://raw.githubusercontent.com/Noam-Alum/lpi_010_160_exam/refs/heads/main/lpi/lpi_questions.json")
-            .then((res) => res.json())
-            .then((data) => {
-                // Shuffle questions and their options
-                const shuffledData = shuffleArray(data).map((q) => ({
-                    ...q,
-                    options: shuffleArray(q.options),
-                }));
-                setQuestions(shuffledData);
-                setLoading(false);
-            });
-    }, []);
-
-    const handleSelectAnswer = (event) => {
-        const answer = event.target.value;
-        const currentQuestion = questions[currentQuestionIndex];
-        const maxSelectable = currentQuestion.answer.length;
-
-        setSelectedAnswers((prev) => {
-            if (maxSelectable === 1) return [answer];
-            if (prev.includes(answer)) return prev.filter((a) => a !== answer);
-            if (prev.length < maxSelectable) return [...prev, answer];
-            return prev;
-        });
-    };
-
-    const handleSubmitAnswer = () => {
-        const currentQuestion = questions[currentQuestionIndex];
-        const correct = currentQuestion.answer;
-
-        const isAnswerCorrect =
-            selectedAnswers.length === correct.length &&
-            selectedAnswers.every((answer) => correct.includes(answer));
-
-        setIsCorrect(isAnswerCorrect);
-        setShowResult(true);
-
-        if (isAnswerCorrect) {
-            setCorrectAnswersCount((prev) => prev + 1);
-        } else {
-            setWrongAnswers((prev) => [
-                ...prev,
-                {
-                    question: currentQuestion.question,
-                    options: currentQuestion.options,
-                    correctAnswers: correct,
-                    selectedAnswers: selectedAnswers,
-                },
-            ]);
-        }
-    };
-
-    const handleNextQuestion = () => {
-        if (currentQuestionIndex < questions.length - 1) {
-            setCurrentQuestionIndex((prev) => prev + 1);
-            setSelectedAnswers([]);
-            setShowResult(false);
-            setIsCorrect(null);
-        } else {
-            setTestComplete(true);
-
-            // Just for statistics
-            try {
-                fetch(`https://notice.alum.sh/LPI-WEB-EXAM-${correctAnswersCount}`, {
-                    method: "GET",
-                    mode: "no-cors",
-                    keepalive: true,
-                });
-            } catch (e) {
-                // Silently ignore any errors
-            }
-        }
-    };
-
-    if (loading) {
-        return <div className="text-center text-xl">Loading questions...</div>;
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      // In development mode, use the local JSON file
+      const shuffledData = shuffleArray(questionList).map((q) => ({
+        ...q,
+        options: shuffleArray(q.options),
+      }));
+      setQuestions(shuffledData);
+      setLoading(false);
+      return;
     }
 
-    if (testComplete) {
-        const totalQuestions = questions.length;
-        const incorrectAnswersCount = totalQuestions - correctAnswersCount;
+    fetch(
+      "https://raw.githubusercontent.com/Noam-Alum/lpi_010_160_exam/refs/heads/main/lpi/lpi_questions.json"
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        // Shuffle questions and their options
+        const shuffledData = shuffleArray(data).map((q) => ({
+          ...q,
+          options: shuffleArray(q.options),
+        }));
+        setQuestions(shuffledData);
+        setLoading(false);
+      });
+  }, []);
 
-        return (
-            <div className="text-center p-6">
-                <h1 className="text-3xl font-bold">Exam Completed</h1>
-                <div className="mt-10 p-6 bg-yellow-100 text-black rounded-lg shadow-lg max-w-xl mx-auto">
-                    <h2 className="text-2xl font-bold mb-2">Support This Project ❤️</h2>
-                    <p className="mb-3">
-                        This exam simulator is maintained by one person, if it helped you prepare, please consider
-                        <a href="https://github.com/sponsors/Noam-Alum" className="underline font-semibold hover:text-purple-700"> sponsoring the developer </a> 
-                        to keep it growing!
-                    </p>
-                    <p className="mb-1">
-                        Found a bug or have a suggestion? Open an issue on
-                        <a href="https://github.com/Noam-Alum/lpi_010_160_exam/issues" className="underline font-semibold hover:text-blue-700"> GitHub</a>.
-                    </p>
-                    <br></br>
-                    I hope you do well on the actual exam 🙃, please let me know at: <a href="mailto:nnoam.alum@gmail.com" className="underline font-semibold hover:text-blue-700">nnoam.alum@gmail.com</a>
-                </div>
-                <br></br>
-                <p className="text-lg mt-2">
-                    You answered {correctAnswersCount} out of {totalQuestions} questions correctly.
-                </p>
-
-                <div className="w-64 mx-auto mt-6">
-                    <Pie
-                        data={{
-                            labels: ["Correct", "Incorrect"],
-                            datasets: [
-                                {
-                                    data: [correctAnswersCount, incorrectAnswersCount],
-                                    backgroundColor: ["#22c55e", "#ef4444"],
-                                },
-                            ],
-                        }}
-                    />
-                </div>
-
-                {wrongAnswers.length > 0 && (
-                    <div className="mt-8 text-left">
-                        <h2 className="text-xl font-bold mb-2">Review Incorrect Answers</h2>
-                        <div className="flex space-x-4 mb-2">
-                            <span className="px-2 py-1 bg-green-500 text-white text-sm rounded">✔ Correct answer</span>
-                            <span className="px-2 py-1 bg-red-500 text-white text-sm rounded">✘ Answered wrong</span>
-                            <span className="px-2 py-1 bg-blue-500 text-white text-sm rounded">⚠ Answered correctly</span>
-                        </div>
-                        {wrongAnswers.map((wrong, index) => (
-                            <div key={index} className="p-4 bg-gray-800 rounded-lg mt-4">
-                                <h3 className="text-lg font-semibold">{wrong.question}</h3>
-                                <ul className="mt-2 space-y-1">
-                                    {wrong.options.map((option, idx) => {
-                                        let bgColor = "bg-gray-700";
-                                        if (wrong.selectedAnswers.includes(option) && wrong.correctAnswers.includes(option)) {
-                                            bgColor = "bg-blue-500";
-                                        } else if (wrong.selectedAnswers.includes(option)) {
-                                            bgColor = "bg-red-500";
-                                        } else if (wrong.correctAnswers.includes(option)) {
-                                            bgColor = "bg-green-500";
-                                        }
-                                        return (
-                                            <li key={idx} className={`p-2 rounded ${bgColor}`}>
-                                                {option}
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                <button
-                    className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                    onClick={() => window.location.reload()}
-                >
-                    Retry Exam
-                </button>
-            </div>
+  // Automatically generate random wrongAnswers array
+  useEffect(() => {
+    if (import.meta.env.DEV && testCompleteScreen) {
+      // automatically generate random wrongAnswers array
+      const randomWrongAnswers = [];
+      const wrongAnswersCount = Math.floor(
+        // set 40% - 60% of questions to be wrong
+        // Math.random() * (questions.length * 0.2) + questions.length * 0.4
+        // sets 100% of questions to be wrong
+        questions.length
+      );
+      for (let i = 0; i < wrongAnswersCount; i++) {
+        const randomIndex = Math.floor(Math.random() * questions.length);
+        const question = questions[randomIndex];
+        const correctAnswers = question.options.filter(
+          (option) => option.is_correct === true
         );
+        const selectedAnswers = [];
+        // make sure the first selected answer is incorrect
+        selectedAnswers.push(question.options.find(option => option.is_correct === false)?.text || "wrongo");
+        // select random answers until we reach the number of correct answers
+        // or until we reach the maximum number of selectable answers
+        const maxSelectable = question.options.filter(
+          (option) => option.is_correct === true
+        ).length;
+        const correctAnswersCount = Math.floor(
+          Math.random() * (maxSelectable - 1) + 1
+        );
+        for (let j = 0; j < correctAnswersCount; j++) {
+          const randomAnswerIndex = Math.floor(
+            Math.random() * question.options.length
+          );
+          selectedAnswers.push(question.options[randomAnswerIndex].text);
+        }
+        randomWrongAnswers.push({
+          question: question.question,
+          options: question.options,
+          correctAnswers: correctAnswers,
+          selectedAnswers: selectedAnswers,
+        });
+      }
+      setWrongAnswers(randomWrongAnswers);
+      setCorrectAnswersCount(questions.length - randomWrongAnswers.length);
+      setTestComplete(true);
     }
+  }, [questions]);
 
+  const handleSelectAnswer = (event) => {
+    const answerText = event.target.value;
     const currentQuestion = questions[currentQuestionIndex];
-    const isMultipleChoice = currentQuestion.answer.length > 1;
-    const isFillInBlank = currentQuestion.options.length === 1;
-    const requiredSelections = currentQuestion.answer.length;
-    const canSubmit = selectedAnswers.length === requiredSelections;
+    const maxSelectable = currentQuestion.options.filter(
+      (option) => option.is_correct === true
+    ).length;
+
+    setSelectedAnswers((prev) => {
+      if (maxSelectable === 1) return [answerText];
+      if (prev.includes(answerText))
+        return prev.filter((a) => a !== answerText);
+      if (prev.length < maxSelectable) return [...prev, answerText];
+      return prev;
+    });
+  };
+
+  const handleSubmitAnswer = () => {
+    const currentQuestion = questions[currentQuestionIndex];
+    const correct = currentQuestion.options.filter(
+      (option) => option.is_correct === true
+    );
+
+    const isAnswerCorrect =
+      selectedAnswers.length === correct.length &&
+      selectedAnswers.every((answerText) =>
+        correct.find((answerObj) => answerObj.text === answerText)
+      );
+
+    setIsCorrect(isAnswerCorrect);
+    setShowResult(true);
+
+    if (isAnswerCorrect) {
+      setCorrectAnswersCount((prev) => prev + 1);
+    } else {
+      setWrongAnswers((prev) => [
+        ...prev,
+        {
+          question: currentQuestion.question,
+          options: currentQuestion.options,
+          correctAnswers: correct,
+          selectedAnswers: selectedAnswers,
+        },
+      ]);
+    }
+  };
+
+  const handleNextQuestion = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex((prev) => prev + 1);
+      setSelectedAnswers([]);
+      setShowResult(false);
+      setIsCorrect(null);
+    } else {
+      setTestComplete(true);
+
+      // Just for statistics
+      try {
+        if (import.meta.env.DEV) {
+          // In development mode, do not send statistics
+          return;
+        }
+
+        fetch(`https://notice.alum.sh/LPI-WEB-EXAM-${correctAnswersCount}`, {
+          method: "GET",
+          mode: "no-cors",
+          keepalive: true,
+        });
+        // eslint-disable-next-line no-unused-vars
+      } catch (_err) {
+        // Silently ignore any errors
+      }
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center text-xl">Loading questions...</div>;
+  }
+
+  if (testComplete) {
+    const totalQuestions = questions.length;
+    const incorrectAnswersCount = totalQuestions - correctAnswersCount;
 
     return (
-        <div className="flex flex-col items-center min-h-screen bg-gray-900 text-white p-6">
-            <h1 className="text-4xl font-bold mb-6"><a href="https://github.com/Noam-Alum/lpi_010_160_exam/">LPI Practice Exam</a></h1>
-            <p className="text-4s font-bold mb-6">Made with ❤️</p>
-            <div className="max-w-2xl bg-gray-800 p-6 rounded-lg shadow-lg">
-                <h2 className="text-xl font-semibold mb-4">{currentQuestion.question}</h2>
-                <p className="mb-2 text-sm text-gray-400">
-                    {isMultipleChoice ? `Select ${requiredSelections} answers.` : isFillInBlank ? "Type the answer." : "Select one answer."}
-                </p>
-                <div className="space-y-2">
-                    {isFillInBlank ? (
-                        <input
-                            type="text"
-                            value={selectedAnswers[0] || ""}
-                            onChange={handleSelectAnswer}
-                            className="bg-gray-700 p-2 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    ) : (
-                    currentQuestion.options.map((option, idx) => (
-                        <label
-                            key={idx}
-                            className={`flex items-center space-x-2 bg-gray-700 p-2 rounded-md cursor-pointer ${
-                                selectedAnswers.includes(option) && "bg-blue-600"
-                            }`}
-                        >
-                            <input
-                                type={isMultipleChoice ? "checkbox" : "radio"}
-                                name={`question-${currentQuestionIndex}`}
-                                value={option}
-                                checked={selectedAnswers.includes(option)}
-                                onChange={handleSelectAnswer}
-                                className="form-checkbox text-blue-500"
-                            />
-                            <span>{option}</span>
-                        </label>
-                    )))}
-                </div>
-
-                <div className="mt-4 flex justify-between">
-                    <button
-                        onClick={handleSubmitAnswer}
-                        className={`px-4 py-2 rounded-md transition-transform duration-300 ${
-                            canSubmit
-                                ? "bg-green-500 text-white hover:bg-green-700 active:opacity-70"
-                                : "bg-gray-500 text-gray-300 cursor-not-allowed"
-                        }`}
-                        disabled={!canSubmit}
-                    >
-                        Submit Answer
-                    </button>
-                </div>
-
-                {showResult && (
-                    <Dialog open={showResult} onClose={() => setShowResult(false)} className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                        <div className="bg-white text-black p-6 rounded-lg shadow-lg">
-                            {isCorrect ? (
-                                <div className="flex items-center space-x-2 text-green-600">
-                                    <FaCheckCircle size={24} />
-                                    <span>Correct!</span>
-                                </div>
-                            ) : (
-                                <div className="text-red-600">
-                                    <div className="flex items-center space-x-2">
-                                        <FaTimesCircle size={24} />
-                                        <span>Incorrect!</span>
-                                    </div>
-                                    <p className="mt-2 text-sm">
-                                        The correct answers are:
-                                        <ul className="list-disc pl-6 mt-2">
-                                            {currentQuestion.answer.map((answer, idx) => (
-                                                <li key={idx}>{answer}</li>
-                                            ))}
-                                        </ul>
-                                    </p>
-                                </div>
-                            )}
-                            <button onClick={handleNextQuestion} className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-700 active:opacity-70">
-                                Next Question
-                            </button>
-                        </div>
-                    </Dialog>
-                )}
-            </div>
-            <br></br><br></br>
-            <div className="mb-6 text-sm bg-yellow-500 text-black px-4 py-2 rounded shadow-lg">
-                Enjoying this tool? <a href="https://github.com/sponsors/Noam-Alum" className="underline font-semibold hover:text-white">Consider sponsoring the project</a>. ❤️
-            </div>
+      <div className="text-center p-6">
+        <h1 className="text-3xl font-bold">Exam Completed</h1>
+        <div className="mt-10 p-6 bg-yellow-100 text-black rounded-lg shadow-lg max-w-xl mx-auto">
+          <h2 className="text-2xl font-bold mb-2">Support This Project ❤️</h2>
+          <p className="mb-3">
+            This exam simulator is maintained by one person, if it helped you
+            prepare, please consider
+            <a
+              href="https://github.com/sponsors/Noam-Alum"
+              className="underline font-semibold hover:text-purple-700"
+            >
+              {" "}
+              sponsoring the developer{" "}
+            </a>
+            to keep it growing!
+          </p>
+          <p className="mb-1">
+            Found a bug or have a suggestion? Open an issue on
+            <a
+              href="https://github.com/Noam-Alum/lpi_010_160_exam/issues"
+              className="underline font-semibold hover:text-blue-700"
+            >
+              {" "}
+              GitHub
+            </a>
+            .
+          </p>
+          <br></br>I hope you do well on the actual exam 🙃, please let me know
+          at:{" "}
+          <a
+            href="mailto:nnoam.alum@gmail.com"
+            className="underline font-semibold hover:text-blue-700"
+          >
+            nnoam.alum@gmail.com
+          </a>
         </div>
+        <br></br>
+        <p className="text-lg mt-2">
+          You answered {correctAnswersCount} out of {totalQuestions} questions
+          correctly.
+        </p>
+
+        <div className="w-64 mx-auto mt-6">
+          <Pie
+            data={{
+              labels: ["Correct", "Incorrect"],
+              datasets: [
+                {
+                  data: [correctAnswersCount, incorrectAnswersCount],
+                  backgroundColor: ["#22c55e", "#ef4444"],
+                },
+              ],
+            }}
+          />
+        </div>
+
+        {wrongAnswers.length > 0 && (
+          <div className="mt-8 text-left">
+            <h2 className="text-xl font-bold mb-2">Review Incorrect Answers</h2>
+            <div className="flex space-x-4 mb-2">
+              <span className="px-2 py-1 bg-green-500 text-white text-sm rounded">
+                ✔ Correct answer
+              </span>
+              <span className="px-2 py-1 bg-red-500 text-white text-sm rounded">
+                ✘ Answered wrong
+              </span>
+              <span className="px-2 py-1 bg-blue-500 text-white text-sm rounded">
+                ⚠ Answered correctly
+              </span>
+            </div>
+            {wrongAnswers.map((wrong, index) => (
+              <div key={index} className="p-4 bg-gray-800 rounded-lg mt-4">
+                <h3 className="text-lg font-semibold">
+                  <Markdown>{wrong.question}</Markdown>
+                </h3>
+                <ul className="mt-2 space-y-1">
+                  {wrong.options.length === 1 && (
+                    <li className="p-2 bg-gray-700 rounded">
+                      You put: <div className="font-bold">{wrong.selectedAnswers[0]}</div>
+                    </li>
+                  )}
+                  {wrong.options.map((option, idx) => {
+                    let bgColor = "bg-gray-700";
+                    if (wrong.options.length === 1) {
+                      bgColor = "bg-green-500";
+                    } else if (
+                      wrong.selectedAnswers.includes(option.text) &&
+                      wrong.correctAnswers.includes(option)
+                    ) {
+                      bgColor = "bg-blue-500";
+                    } else if (wrong.selectedAnswers.includes(option.text)) {
+                      bgColor = "bg-red-500";
+                    } else if (wrong.correctAnswers.includes(option)) {
+                      bgColor = "bg-green-500";
+                    }
+                    return (
+                      <li key={idx} className={`p-2 rounded ${bgColor}`}>
+                        <div className="font-bold">{option.text}</div>
+                        <div className="pl-4">
+                          <Markdown>{option.explanation}</Markdown>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          onClick={() => window.location.reload()}
+        >
+          Retry Exam
+        </button>
+      </div>
     );
+  }
+
+  const currentQuestion = questions[currentQuestionIndex];
+  const currentQuestionAnswers = currentQuestion.options.filter(
+    (option) => option.is_correct === true
+  );
+  const isMultipleChoice = currentQuestionAnswers.length > 1;
+  const isFillInBlank = currentQuestion.options.length === 1;
+  const requiredSelections = currentQuestionAnswers.length;
+  const canSubmit = selectedAnswers.length === requiredSelections;
+
+  return (
+    <div className="flex flex-col items-center min-h-screen bg-gray-900 text-white p-6">
+      <h1 className="text-4xl font-bold mb-6">
+        <a href="https://github.com/Noam-Alum/lpi_010_160_exam/">
+          LPI Practice Exam
+        </a>
+      </h1>
+      <p className="text-4s font-bold mb-6">Made with ❤️</p>
+      <div className="max-w-2xl bg-gray-800 p-6 rounded-lg shadow-lg">
+        <h2 className="text-xl font-semibold mb-4">
+          <Markdown>{currentQuestion.question}</Markdown>
+        </h2>
+        <p className="mb-2 text-sm text-gray-400">
+          {isMultipleChoice
+            ? `Select ${requiredSelections} answers.`
+            : isFillInBlank
+            ? "Type the answer."
+            : "Select one answer."}
+        </p>
+        <div className="space-y-2">
+          {isFillInBlank ? (
+            <input
+              type="text"
+              value={selectedAnswers[0] || ""}
+              onChange={handleSelectAnswer}
+              className="bg-gray-700 p-2 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          ) : (
+            currentQuestion.options.map((option, idx) => (
+              <label
+                key={idx}
+                className={`flex items-center space-x-2 bg-gray-700 p-2 rounded-md cursor-pointer ${
+                  selectedAnswers.includes(option) && "bg-blue-600"
+                }`}
+              >
+                <input
+                  type={isMultipleChoice ? "checkbox" : "radio"}
+                  name={`question-${currentQuestionIndex}`}
+                  value={option.text}
+                  checked={selectedAnswers.includes(option.text)}
+                  onChange={handleSelectAnswer}
+                  className="form-checkbox text-blue-500"
+                />
+                <span>{option.text}</span>
+              </label>
+            ))
+          )}
+        </div>
+
+        <div className="mt-4 flex justify-between">
+          <button
+            onClick={handleSubmitAnswer}
+            className={`px-4 py-2 rounded-md transition-transform duration-300 ${
+              canSubmit
+                ? "bg-green-500 text-white hover:bg-green-700 active:opacity-70"
+                : "bg-gray-500 text-gray-300 cursor-not-allowed"
+            }`}
+            disabled={!canSubmit}
+          >
+            Submit Answer
+          </button>
+        </div>
+
+        {showResult && (
+          <Dialog
+            open={showResult}
+            onClose={() => setShowResult(false)}
+            className="absolute overflow-auto inset-0 flex items-center justify-center bg-black bg-opacity-50"
+          >
+            <div className="bg-white text-black p-6 rounded-lg shadow-lg">
+              {isCorrect ? (
+                <div className="flex flex-col items-center space-x-2 max-w-4xl">
+                  <div className="flex text-2xl font-bold items-center text-center text-green-600">
+                    <FaCheckCircle size={24} />
+                    <div className="pl-2 mt--4">Correct!</div>
+                  </div>
+                  <div className="pl-6 mt-2 self-start text-left">
+                    {currentQuestionAnswers.map((answer, idx) => (
+                      <div key={idx}>
+                        <div className="font-bold text-l">{answer.text}</div>
+                        <div className="ml-4">
+                          <Markdown>{answer.explanation}</Markdown>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center space-x-2 max-w-4xl">
+                  <div className="flex text-2xl font-bold items-center text-center text-red-600">
+                    <FaTimesCircle size={24} />
+                    <span className="pl-2">Incorrect!</span>
+                  </div>
+                  <div className="mt-2 text-sm">
+                    The options were:
+                    <div className="pl-6 mt-2 self-start text-left">
+                      {currentQuestion.options.map((option, idx) => (
+                        <div key={idx} className="my-4">
+                          <div className="font-bold text-l">{option.text}</div>
+                          <div>
+                            {option.is_correct ? "✅ Correct" : "❌ Incorrect"}
+                          </div>
+
+                          <div className="ml-4">
+                            <Markdown>{option.explanation}</Markdown>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={handleNextQuestion}
+                className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-700 active:opacity-70"
+              >
+                Next Question
+              </button>
+            </div>
+          </Dialog>
+        )}
+      </div>
+      <br></br>
+      <br></br>
+      <div className="mb-6 text-sm bg-yellow-500 text-black px-4 py-2 rounded shadow-lg">
+        Enjoying this tool?{" "}
+        <a
+          href="https://github.com/sponsors/Noam-Alum"
+          className="underline font-semibold hover:text-white"
+        >
+          Consider sponsoring the project
+        </a>
+        . ❤️
+      </div>
+    </div>
+  );
 };
 
 export default App;

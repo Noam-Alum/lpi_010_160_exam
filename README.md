@@ -1,3 +1,3 @@
 # This website has been permanently removed in response to a DMCA takedown notice.
 
-> I **do not** store **any** copy of the original website.
+### Please stop reaching out asking for a backups of the exam, I don't have any backup of the exam.
